@@ -1,0 +1,41 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "[1.21.70]Vote Addon",
+        "description": "BetaAPIsを有効にする必要があります",
+        "uuid": "34493e98-20c5-403f-2873-bbf65dcc3d30",
+        "version": [
+            0,
+            1,
+            0
+        ],
+        "min_engine_version": [
+            1,
+            20,
+            40
+        ]
+    },
+    "modules": [
+        {
+            "description": "GameTest module",
+            "type": "script",
+            "uuid": "c065d2e5-d747-1122-b6e4-1a24ff52952d",
+            "version": [
+                0,
+                1,
+                0
+            ],
+            "entry": "scripts/index.js"
+        }
+    ],
+    "dependencies": [
+        {
+            "module_name": "@minecraft/server",
+            "version": "2.0.0-beta"
+        },
+        {
+            "module_name": "@minecraft/server-ui",
+            "version": "2.0.0-beta"
+        }
+    ]
+}
