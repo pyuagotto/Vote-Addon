@@ -110,6 +110,8 @@ const showVgetForm = function(player){
 const vs = function(origin){
     switch(voteStatus){
         case 0:
+            world.sendMessage("§6投票が開始されました。§r");
+            world.sendMessage(`§a${config.itemName}を右クリックして投票先を選択してください。§r`);
             //scoreboard削除 & 追加
             const sb1 = world.scoreboard.getObjective(config.objectiveId1);
             const sb2 = world.scoreboard.getObjective(config.objectiveId2);
@@ -135,7 +137,7 @@ const vs = function(origin){
             }
 
             voteStatus = 1;
-            return { status: CustomCommandStatus.Success, message: `§6投票が開始されました。§r\n§a${config.itemName}を右クリックして投票先を選択してください。§r` };
+            return { status: CustomCommandStatus.Success };
 
         case 1:
             world.sendMessage("§6投票結果を開示します。§r");
@@ -187,13 +189,14 @@ const vs = function(origin){
             return { status: CustomCommandStatus.Success };
 
         default :
+            world.sendMessage("§6投票結果をリセットします。§r");
             vResultMap.clear();
             vgetMap.clear();
             playersName.length = 0;
             voteStatus = 0;
             vgetStatus = false;
 
-            return { status: CustomCommandStatus.Success, message: "§6投票結果をリセットします。§r" };
+            return { status: CustomCommandStatus.Success };
     }
 };
 
@@ -275,7 +278,7 @@ system.beforeEvents.startup.subscribe((ev) => {
             {
                 name,
                 description,
-                permissionLevel: CommandPermissionLevel.Admin,
+                permissionLevel: CommandPermissionLevel.GameDirectors,
             },
             callback
         );
