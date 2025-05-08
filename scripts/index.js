@@ -1,5 +1,5 @@
 //@ts-check
-import { Player, system, world } from '@minecraft/server';
+import { CommandPermissionLevel, CustomCommandOrigin, CustomCommandStatus, Player, system, world } from '@minecraft/server';
 import { ActionFormData, ModalFormData } from '@minecraft/server-ui';
 import config from './config.js';
 
@@ -36,9 +36,10 @@ const getPlayer = function(playerName){
 /**
  * @param {Player} player 
  */
-
-//自分自身への投票を可能にするかどうか
 const showVoteForm = function(player){
+    /**
+     * @type {String[]}
+     */
     let votePlayerList = [];
 
     if(config.canVoteMyself){
@@ -54,14 +55,16 @@ const showVoteForm = function(player){
     }else{
         const modalForm = new ModalFormData();
         modalForm.title("投票");
-        modalForm.dropdown("\n\n\nプレイヤー", votePlayerList, 0);
+        modalForm.dropdown("\n\n\nプレイヤー", votePlayerList, { defaultValueIndex: 0 });
         modalForm.show(player).then((res)=>{
-            if(res.formValues && typeof(res.formValues[0]) !== 'string' && typeof(res.formValues[0]) !== 'boolean') {
+            const index = res.formValues && res.formValues[0];
+
+            if(typeof(index) == 'number') {
                 //投票先のプレイヤーの名前
-                const votedPlayerName = votePlayerList[res.formValues[0]];
+                const votedPlayerName = votePlayerList[index];
     
                 //投票先のプレイヤーの名前から<Player>を取得
-                const votedPlayer = getPlayer(votePlayerList[res.formValues[0]]);
+                const votedPlayer = getPlayer(votePlayerList[index]);
                 if(!votedPlayer) return;
     
                 //表示用兼保存用スコアボード
@@ -100,32 +103,39 @@ const showVgetForm = function(player){
     actionForm.show(player);
 };
 
-const vs = function(){
+/**
+ * @param {CustomCommandOrigin} origin 
+ * @returns { { status: CustomCommandStatus, message?: string } }
+ */
+const vs = function(origin){
     switch(voteStatus){
         case 0:
-            world.sendMessage("§6投票が開始されました。§r");
-            world.sendMessage(`§a${config.itemName}を右クリックして投票先を選択してください。§r`);
-
             //scoreboard削除 & 追加
             const sb1 = world.scoreboard.getObjective(config.objectiveId1);
             const sb2 = world.scoreboard.getObjective(config.objectiveId2);
-            if(sb1) world.scoreboard.removeObjective(sb1);
-            if(sb2) world.scoreboard.removeObjective(sb2);
-            world.scoreboard.addObjective(config.objectiveId1);
-            world.scoreboard.addObjective(config.objectiveId2);
+            
+            system.run(()=>{
+                if(sb1) world.scoreboard.removeObjective(sb1);
+                if(sb2) world.scoreboard.removeObjective(sb2);
+                world.scoreboard.addObjective(config.objectiveId1);
+                world.scoreboard.addObjective(config.objectiveId2);
+            });
 
             //投票可能なプレイヤーを配列に追加
             for(const player of world.getPlayers()){
                 player.setDynamicProperty("voted", false);
                 if(player.hasTag(config.canVoteTag)){
-                    sb1?.setScore(player.name, 0);
-                    sb2?.setScore(player, 0);
+                    system.run(()=>{
+                        sb1?.setScore(player.name, 0);
+                        sb2?.setScore(player, 0);
+                    });
+                    
                     playersName.push(player.name);
                 }
             }
 
             voteStatus = 1;
-            break;
+            return { status: CustomCommandStatus.Success, message: `§6投票が開始されました。§r\n§a${config.itemName}を右クリックして投票先を選択してください。§r` };
 
         case 1:
             world.sendMessage("§6投票結果を開示します。§r");
@@ -133,7 +143,7 @@ const vs = function(){
 
             //投票結果をscoreboardからMapに
             const vResultList = world.scoreboard.getObjective(config.objectiveId1)?.getScores();
-            if(!vResultList) return;
+            if(!vResultList) return { status: CustomCommandStatus.Failure, message: `${config.objectiveId1}が存在しません` };
 
             for(const vResult of vResultList){
                 if(vResult.score !== 0) vResultMap.set(vResult.participant.displayName, vResult.score);
@@ -174,35 +184,40 @@ const vs = function(){
 
             world.sendMessage("§b==========投票結果==========§r");
             voteStatus = 2;
-            break;
+            return { status: CustomCommandStatus.Success };
 
         default :
-            world.sendMessage("§6投票結果をリセットします。§r");
             vResultMap.clear();
             vgetMap.clear();
             playersName.length = 0;
             voteStatus = 0;
             vgetStatus = false;
+
+            return { status: CustomCommandStatus.Success, message: "§6投票結果をリセットします。§r" };
     }
 };
 
 /**
- * @param {Player | undefined} sender 
+ * @param {CustomCommandOrigin} origin 
+ * @returns { { status: CustomCommandStatus, message?: string } }
  */
-const vget = function(sender = undefined){
+const vget = function(origin){
     switch(voteStatus){
         case 0:
-            sender?.sendMessage("§c投票は開始されていません。§r");
-            break;
+            return { status: CustomCommandStatus.Failure, message: "投票は開始されていません。" };
 
         case 1:
-            sender?.sendMessage("§c投票は終了していません。§r");
-            break;
+            return { status: CustomCommandStatus.Failure, message: "投票は終了していません。" };
 
         default :
-            world.sendMessage("§6投票先を開示します。§r");
-            world.sendMessage("§b本を右クリックして確認してください。")
-            vgetStatus = true;
+            if(!vgetStatus){
+                world.sendMessage("§6投票先を開示します。§r");
+                world.sendMessage("§b本を右クリックして確認してください。")
+                vgetStatus = true;
+                return { status: CustomCommandStatus.Success };
+            }else{
+                return { status: CustomCommandStatus.Failure, message: "投票先はすでに開示されています。" };
+            }
     }
 };
 
@@ -218,22 +233,6 @@ system.runInterval(()=>{
         }
     }
 },1);
-
-world.beforeEvents.chatSend.subscribe((ev)=>{
-    const { sender, message } = ev;
-
-    if(message === config.commandPrefix + "vs"){
-        system.run(()=>{
-            vs();
-        });
-        ev.cancel = true;
-    }
-
-    if(message === config.commandPrefix + "vget"){
-       vget(sender);
-        ev.cancel = true;
-    }
-});
 
 world.afterEvents.itemUse.subscribe((ev)=>{
     const { source, itemStack } = ev;
@@ -264,14 +263,33 @@ world.afterEvents.itemUse.subscribe((ev)=>{
     }
 });
 
-system.afterEvents.scriptEventReceive.subscribe((ev)=>{
-    const { id } = ev;
+system.beforeEvents.startup.subscribe((ev) => {
+    /**
+     * 
+     * @param {string} name 
+     * @param {string} description 
+     * @param {(origin: CustomCommandOrigin) => { status: CustomCommandStatus }} callback 
+     */
+    const registerCommand = function(name, description, callback) {
+        ev.customCommandRegistry.registerCommand(
+            {
+                name,
+                description,
+                permissionLevel: CommandPermissionLevel.Admin,
+            },
+            callback
+        );
+    };
 
-    if(id === "vote:start"){
-        vs();
-    }
+    registerCommand(
+        "vote:start",
+        "投票を開始します",
+        vs
+    );
 
-    if(id === "vote:get"){
-        vget();
-    }
+    registerCommand(
+        "vote:get",
+        "投票先を開示します",
+        vget
+    );
 });

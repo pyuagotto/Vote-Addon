@@ -1,9 +1,9 @@
 {
     "format_version": 2,
     "header": {
-        "name": "[1.21.70]Vote Addon",
+        "name": "[1.21.80]Vote Addon",
         "description": "BetaAPIsを有効にする必要があります",
-        "uuid": "34493e98-20c5-403f-2873-bbf65dcc3d30",
+        "uuid": "34493e98-20c5-553f-2873-bbf65dcc3d30",
         "version": [
             0,
             1,
@@ -19,7 +19,7 @@
         {
             "description": "GameTest module",
             "type": "script",
-            "uuid": "c065d2e5-d747-1122-b6e4-1a24ff52952d",
+            "uuid": "c011d2e5-d747-5522-b6e4-1a24ff52952d",
             "version": [
                 0,
                 1,

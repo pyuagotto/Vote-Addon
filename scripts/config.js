@@ -1,5 +1,4 @@
 export default ({
-    commandPrefix: ".",　//チャットコマンドの最初の文字
     itemId : "minecraft:book", //投票に使用するアイテムのID
     itemName: "本", //投票に使用するアイテムの名前(任意の文字列可)
     canVoteTag: "canVote", //投票先プレイヤーにつけるタグ(タグがないプレイヤーはリストに表示されない)
